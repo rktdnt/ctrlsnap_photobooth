@@ -17,19 +17,60 @@ const FeatureCard = ({ title, desc, icon: Icon }: { title: string; desc: string;
   </div>
 );
 
-const MiniStrip = ({ className = '', dark = false }: { className?: string; dark?: boolean }) => (
+const MiniStrip = ({ 
+  className = '', 
+  dark = false, 
+  images = [] 
+}: { 
+  className?: string; 
+  dark?: boolean; 
+  images?: string[];
+}) => (
   <div className={`rounded-[1.4rem] p-4 pb-10 shadow-2xl ${dark ? 'bg-ink text-warm-cream' : 'bg-warm-cream text-ink'} ${className}`}>
     <div className="flex flex-col gap-3">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className={`aspect-[4/3] rounded-xl ${item === 1 ? 'bg-cloud-white' : 'bg-muted-blue'}`} />
+      {images.map((imgSrc, index) => (
+        <div key={index} className="aspect-[4/3] rounded-xl overflow-hidden bg-muted-blue">
+          <img 
+            src={imgSrc} 
+            alt={`Photostrip frame ${index + 1}`} 
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+          />
+        </div>
       ))}
     </div>
     <div className="mt-5 text-center text-[10px] font-black tracking-[0.28em]">PHOTOMATICS</div>
   </div>
 );
 
+const PREVIEW_IMAGES = [
+  '/images/strip_one_one.png',
+  '/images/strip_one_two.png',
+  '/images/strip_one_three.png',
+];
+
+const getPhotoNumber = (path: string): string => {
+  const lowercasePath = path.toLowerCase();
+  if (lowercasePath.includes('one') || lowercasePath.includes('_1')) return '1';
+  if (lowercasePath.includes('two') || lowercasePath.includes('_2')) return '2';
+  if (lowercasePath.includes('three') || lowercasePath.includes('_3')) return '3';
+  if (lowercasePath.includes('four') || lowercasePath.includes('_4')) return '4';
+  if (lowercasePath.includes('five') || lowercasePath.includes('_5')) return '5';
+  if (lowercasePath.includes('six') || lowercasePath.includes('_6')) return '6';
+  
+  const match = path.match(/\d+/);
+  return match ? match[0] : '1';
+};
+
 const LandingPage: React.FC<LandingPageProps> = ({ onNext }) => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPreviewIndex((prev) => (prev + 1) % PREVIEW_IMAGES.length);
+    }, 800); // 800ms interval for stop-motion photobooth look
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -86,12 +127,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNext }) => {
             <div className="absolute inset-0 rounded-[3rem] bg-muted-blue/55" />
             <div className="absolute left-8 top-10 h-28 w-28 rounded-full bg-warm-cream" />
             <div className="absolute bottom-12 right-12 h-36 w-36 rounded-full bg-cloud-white" />
-            <MiniStrip className="animate-float absolute right-12 top-12 w-52 rotate-6" />
-            <MiniStrip className="animate-float absolute left-20 top-36 w-60 -rotate-6" dark />
-            <div className="absolute bottom-10 left-10 right-10 rounded-[2rem] bg-warm-cream p-8 shadow-xl">
-              <p className="eyebrow mb-2">Final Flow</p>
-              <p className="text-2xl font-black">Konfigurasi, kamera, editor, dan result page dalam satu pengalaman yang rapi.</p>
-            </div>
+            <MiniStrip 
+              className="animate-float absolute right-12 top-12 w-52 rotate-6 z-10" 
+              images={[
+                '/images/strip_one_one.png',
+                '/images/strip_one_two.png',
+                '/images/strip_one_three.png'
+              ]}
+            />
+            <MiniStrip 
+              className="animate-float absolute left-20 top-36 w-60 -rotate-6 z-20" 
+              dark 
+              images={[
+                '/images/strip_two_one.png',
+                '/images/strip_two_two.png',
+                '/images/strip_two_three.png'
+              ]}
+            />
           </motion.div>
         </section>
 
@@ -131,10 +183,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNext }) => {
                 <span className="h-3 w-3 rounded-full bg-cloud-white" />
                 <span className="ml-auto font-mono text-xs text-warm-cream/55">photomatics.app</span>
               </div>
-              <div className="flex aspect-video items-center justify-center rounded-[2rem] bg-muted-blue">
-                <button onClick={onNext} className="flex h-20 w-20 items-center justify-center rounded-full bg-warm-cream text-ink shadow-xl">
-                  <Play className="ml-1 h-8 w-8 fill-current" />
-                </button>
+              <div 
+                className="flex aspect-video items-center justify-center rounded-[2rem] bg-muted-blue bg-cover bg-center relative overflow-hidden group cursor-pointer"
+                style={{ backgroundImage: `url(${PREVIEW_IMAGES[previewIndex]})` }}
+                onClick={onNext}
+              >
+                <div className="absolute inset-0 bg-ink/20 backdrop-blur-[1px] group-hover:backdrop-blur-none transition-all duration-300" />
+                
+                <div className="absolute inset-4 border border-warm-cream/20 rounded-[1.5rem] pointer-events-none flex flex-col justify-between p-3 select-none">
+                  <div className="flex justify-between items-center text-[10px] font-mono tracking-widest text-warm-cream/70 font-bold">
+                    <span>00:0{getPhotoNumber(PREVIEW_IMAGES[previewIndex])}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
