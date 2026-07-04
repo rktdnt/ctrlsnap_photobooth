@@ -1,5 +1,6 @@
 import base64
 import io
+import secrets
 import cloudinary
 import cloudinary.uploader
 import qrcode
@@ -41,8 +42,14 @@ def upload_image(req: schemas.UploadImageRequest):
         return {"url": req.image, "public_id": "local_mock"}
         
     try:
+        # Generate a random 12-character hex string for the filename
+        random_id = f"strip_{secrets.token_hex(6)}"
         # cloudinary handles data URIs directly
-        upload_result = cloudinary.uploader.upload(req.image, folder="photomatics")
+        upload_result = cloudinary.uploader.upload(
+            req.image, 
+            folder="photomatics",
+            public_id=random_id
+        )
         return {
             "url": upload_result.get("secure_url"),
             "public_id": upload_result.get("public_id")
