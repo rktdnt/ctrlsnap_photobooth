@@ -2,6 +2,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+# Also search in the parent root directory if not found in current directory
+root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+if os.path.exists(root_env):
+    load_dotenv(root_env)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./photomatics.db")
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
