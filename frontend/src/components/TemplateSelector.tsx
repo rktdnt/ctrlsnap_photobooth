@@ -79,10 +79,6 @@ const TemplateSelector: React.FC<Props> = ({
       setShowPaymentModal(true);
       return;
     }
-    // If trial, force to single layout
-    if (sessionMode === 'trial') {
-      setSelectedLayout(LAYOUTS.find(l => l.id === 'single-1') || LAYOUTS[0]);
-    }
     onNext();
   };
 
@@ -135,10 +131,9 @@ const TemplateSelector: React.FC<Props> = ({
           </div>
 
           {/* Card 2: Layout */}
-          <div className={`cream-card rounded-[2rem] p-7 transition-opacity ${sessionMode === 'trial' ? 'opacity-55 pointer-events-none' : ''}`}>
+          <div className="cream-card rounded-[2rem] p-7">
             <div className="flex justify-between items-center mb-4">
               <h3 className="flex items-center gap-2 text-xl font-black"><LayoutIcon className="w-5 h-5 text-soft-ink" /> Pilih Layout</h3>
-              {sessionMode === 'trial' && <span className="rounded-full bg-muted-blue px-3 py-1 font-mono text-xs font-bold text-ink">TERKUNCI DI TRIAL</span>}
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -172,17 +167,15 @@ const TemplateSelector: React.FC<Props> = ({
             <h3 className="mb-5 flex items-center gap-2 text-xl font-black"><Frame className="w-5 h-5 text-soft-ink" /> Pilih Frame Awal</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {FRAMES.map(frame => {
-                const isLocked = sessionMode === 'trial' && frame.id !== 'sleek-minimalist';
                 return (
                   <button
                     key={frame.id}
-                    onClick={() => !isLocked && setSelectedFrame(frame)}
-                    className={`relative flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${isLocked ? 'cursor-not-allowed opacity-45' : selectedFrame.id === frame.id ? 'border-ink bg-muted-blue/55' : 'border-ink/10 bg-white/35 hover:border-ink/30'}`}
+                    onClick={() => setSelectedFrame(frame)}
+                    className={`relative flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${selectedFrame.id === frame.id ? 'border-ink bg-muted-blue/55' : 'border-ink/10 bg-white/35 hover:border-ink/30'}`}
                   >
                     <div className="w-8 h-8 rounded-full shadow-inner flex-shrink-0 border border-white/20" style={{ backgroundColor: frame.bgColor }} />
                     <div className="flex-1 truncate">
                       <div className="text-sm font-bold truncate">{frame.name}</div>
-                      {isLocked && <div className="mt-1 text-[10px] text-soft-ink">Premium Only</div>}
                     </div>
                     {selectedFrame.id === frame.id && <Check className="absolute right-3 w-4 h-4 text-ink" />}
                   </button>

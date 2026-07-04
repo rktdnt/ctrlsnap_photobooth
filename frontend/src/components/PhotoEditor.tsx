@@ -14,6 +14,23 @@ interface Props {
 const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMode, onBack, onSave }) => {
   const [activeTab, setActiveTab] = useState<'filter' | 'sticker' | 'text' | 'frame' | 'custom'>('filter');
   const [customImage, setCustomImage] = useState<string | null>(null);
+  const [customFrameBgImage, setCustomFrameBgImage] = useState<string | null>(null);
+
+  const handleCustomColorChange = (color: string) => {
+    setSelectedFrame(prev => ({
+      ...prev,
+      id: 'custom-frame',
+      name: 'Custom Frame',
+      bgColor: color
+    }));
+  };
+
+  const handleCustomTextColorChange = (textColor: string) => {
+    setSelectedFrame(prev => ({
+      ...prev,
+      textColor: textColor
+    }));
+  };
   
   // Editor State
   const [selectedFilter, setSelectedFilter] = useState<PhotoFilter>(FILTERS[0]);
@@ -104,6 +121,16 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error("Could not get 2d context");
 
+      // Helper to load image
+      const loadImage = (src: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+      };
+
       // 1. Calculate dimensions
       const CANVAS_WIDTH = 600;
       let CANVAS_HEIGHT = 600;
@@ -135,32 +162,27 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
       canvas.height = CANVAS_HEIGHT;
 
       // 2. Draw Background Frame
-      ctx.fillStyle = selectedFrame.bgColor;
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      if (customFrameBgImage) {
+        const bgImgEl = await loadImage(customFrameBgImage);
+        ctx.drawImage(bgImgEl, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      } else {
+        ctx.fillStyle = selectedFrame.bgColor;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      if (selectedFrame.pattern === 'radial-dot') {
-        // Simple dot pattern simulation
-        ctx.fillStyle = selectedFrame.textColor;
-        ctx.globalAlpha = 0.1;
-        for (let x = 0; x < CANVAS_WIDTH; x += 10) {
-          for (let y = 0; y < CANVAS_HEIGHT; y += 10) {
-            ctx.beginPath();
-            ctx.arc(x, y, 1, 0, Math.PI * 2);
-            ctx.fill();
+        if (selectedFrame.pattern === 'radial-dot') {
+          // Simple dot pattern simulation
+          ctx.fillStyle = selectedFrame.textColor;
+          ctx.globalAlpha = 0.1;
+          for (let x = 0; x < CANVAS_WIDTH; x += 10) {
+            for (let y = 0; y < CANVAS_HEIGHT; y += 10) {
+              ctx.beginPath();
+              ctx.arc(x, y, 1, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
+          ctx.globalAlpha = 1.0;
         }
-        ctx.globalAlpha = 1.0;
       }
-
-      // Helper to load image
-      const loadImage = (src: string): Promise<HTMLImageElement> => {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = src;
-        });
-      };
 
       // 3. Draw Photos with aspect-fill and filter tint
       for (let i = 0; i < photos.length; i++) {
@@ -341,6 +363,9 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
             className="relative max-h-full max-w-full touch-none overflow-hidden rounded-[2rem] shadow-2xl transition-colors duration-500 p-4"
             style={{ 
               backgroundColor: selectedFrame.bgColor,
+              backgroundImage: customFrameBgImage ? `url(${customFrameBgImage})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               aspectRatio: layout.id === 'single-1' ? '600/680' : layout.id === 'classic-3' ? '600/1600' : layout.id === 'strip-4' ? '600/2100' : '600/720',
               height: '100%',
               maxWidth: '280px'
@@ -580,19 +605,116 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
 
             {/* Frame Tab */}
             {activeTab === 'frame' && (
-              <div className="grid grid-cols-2 gap-4">
-                {FRAMES.map(frame => (
-                  <button
-                    key={frame.id}
-                    onClick={() => setSelectedFrame(frame)}
-                    className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${selectedFrame.id === frame.id ? 'border-ink bg-muted-blue/50' : 'border-ink/10 bg-white/35 hover:border-ink/30'}`}
-                  >
-                    <div className="w-10 h-10 rounded-full shadow-inner border border-white/20 flex-shrink-0" style={{ backgroundColor: frame.bgColor }} />
-                    <div>
-                      <div className="text-sm font-bold truncate">{frame.name}</div>
+              <div className="space-y-6 animate-fade-in">
+                <div>
+                  <h4 className="mb-3 text-[10px] font-black uppercase text-soft-ink tracking-wider">Frame Standar</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {FRAMES.map(frame => (
+                      <button
+                        key={frame.id}
+                        onClick={() => {
+                          setSelectedFrame(frame);
+                          setCustomFrameBgImage(null);
+                        }}
+                        className={`flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all ${selectedFrame.id === frame.id && !customFrameBgImage ? 'border-ink bg-muted-blue/50 shadow-md' : 'border-ink/10 bg-white/35 hover:border-ink/30'}`}
+                      >
+                        <div className="w-8 h-8 rounded-full shadow-inner border border-white/20 flex-shrink-0" style={{ backgroundColor: frame.bgColor }} />
+                        <div className="flex-1 truncate">
+                          <div className="text-sm font-bold truncate">{frame.name}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {sessionMode === 'premium' ? (
+                  <div className="border-t border-ink/10 pt-5 space-y-4">
+                    <h4 className="flex items-center gap-1.5 text-xs font-black uppercase text-ink tracking-wider">
+                      <Crown className="w-4 h-4 text-ink animate-pulse" /> Kustomisasi Frame Premium
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Custom BG Color */}
+                      <div className="cream-card rounded-2xl p-4 border border-ink/5 bg-white/40">
+                        <label className="text-[10px] font-bold text-soft-ink uppercase tracking-wider block mb-2">Warna Background</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color" 
+                            value={selectedFrame.bgColor} 
+                            onChange={(e) => handleCustomColorChange(e.target.value)}
+                            className="w-10 h-10 rounded-lg cursor-pointer border border-ink/10 bg-transparent"
+                          />
+                          <span className="font-mono text-xs font-bold text-ink">{selectedFrame.bgColor.toUpperCase()}</span>
+                        </div>
+                      </div>
+
+                      {/* Custom Text Color */}
+                      <div className="cream-card rounded-2xl p-4 border border-ink/5 bg-white/40">
+                        <label className="text-[10px] font-bold text-soft-ink uppercase tracking-wider block mb-2">Warna Teks & Watermark</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color" 
+                            value={selectedFrame.textColor} 
+                            onChange={(e) => handleCustomTextColorChange(e.target.value)}
+                            className="w-10 h-10 rounded-lg cursor-pointer border border-ink/10 bg-transparent"
+                          />
+                          <span className="font-mono text-xs font-bold text-ink">{selectedFrame.textColor.toUpperCase()}</span>
+                        </div>
+                      </div>
                     </div>
-                  </button>
-                ))}
+
+                    {/* Custom Background Image */}
+                    <div className="cream-card rounded-2xl p-5 border border-ink/5 bg-white/40">
+                      <label className="text-[10px] font-bold text-soft-ink uppercase tracking-wider block mb-3">Template Gambar Background</label>
+                      {!customFrameBgImage ? (
+                        <div className="flex flex-col items-center justify-center border border-dashed border-ink/20 rounded-xl p-4 bg-white/30">
+                          <label className="flex cursor-pointer items-center gap-2 rounded-full bg-ink px-5 py-2 text-xs font-black text-warm-cream transition hover:scale-102 cursor-pointer">
+                            <ImageIcon className="w-3.5 h-3.5" /> Pilih File Gambar
+                            <input 
+                              type="file" 
+                              accept="image/png, image/jpeg" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (e) => {
+                                    setCustomFrameBgImage(e.target?.result as string);
+                                    setSelectedFrame(prev => ({ ...prev, id: 'custom-frame', name: 'Custom Frame (Image)' }));
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }} 
+                            />
+                          </label>
+                          <p className="text-[10px] text-soft-ink mt-2 text-center">Gunakan file 600x1600 px untuk hasil strip terbaik.</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4 rounded-xl border border-ink/10 bg-white/50 p-3">
+                          <div className="flex items-center gap-3">
+                            <img src={customFrameBgImage} className="w-10 h-14 object-cover rounded border border-ink/10" alt="custom frame preview" />
+                            <div>
+                              <div className="text-xs font-bold text-ink">Template Kustom</div>
+                              <div className="text-[10px] text-soft-ink">Aktif sebagai background</div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => setCustomFrameBgImage(null)} 
+                            className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-400/10 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="cream-card rounded-[1.5rem] p-5 border border-dashed border-ink/20 flex flex-col items-center text-center">
+                    <Crown className="mb-2 h-6 w-6 text-soft-ink" />
+                    <p className="text-xs font-black text-ink">Upgrade Kustomisasi Frame</p>
+                    <p className="mt-1 text-[10px] text-soft-ink max-w-xs">Pilih premium sesi untuk mengganti warna background apa saja dan menggunakan template gambar Anda sendiri.</p>
+                  </div>
+                )}
               </div>
             )}
 
