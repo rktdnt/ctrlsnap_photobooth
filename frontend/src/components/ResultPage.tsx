@@ -16,7 +16,7 @@ interface SessionRecord {
   created_at: string;
 }
 
-const ResultPage: React.FC<Props> = ({ dataUrl, layout, frame, sessionMode, onReset }) => {
+const ResultPage: React.FC<Props> = ({ dataUrl, onReset }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(true);
@@ -24,20 +24,13 @@ const ResultPage: React.FC<Props> = ({ dataUrl, layout, frame, sessionMode, onRe
   const [history, setHistory] = useState<SessionRecord[]>([]);
   const [waNumber, setWaNumber] = useState('');
 
-  // Get or create stable device_id
-  const getDeviceId = () => {
-    let id = localStorage.getItem('pm_device_id');
-    if (!id) {
-      id = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('pm_device_id', id);
-    }
-    return id;
-  };
+
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
   useEffect(() => {
     const processResult = async () => {
+      let finalUrl = dataUrl;
       try {
         setIsUploading(true);
         // 1. Upload to Cloudinary via Backend
@@ -46,34 +39,39 @@ const ResultPage: React.FC<Props> = ({ dataUrl, layout, frame, sessionMode, onRe
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: dataUrl })
         });
-        if (!resUpload.ok) throw new Error("Upload failed");
-        const uploadData = await resUpload.json();
-        const finalUrl = uploadData.url;
-        setUploadedImageUrl(finalUrl);
-
-        // 2. Log Session to MySQL
-        const deviceId = getDeviceId();
-        await fetch(`${API_BASE}/api/sessions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            device_id: deviceId,
-            layout_id: layout.id,
-            frame_id: frame.id,
-            session_mode: sessionMode,
-            image_url: finalUrl
-          })
-        });
-
-        // 3. Fetch History
-        fetchHistory(deviceId);
-
+        if (resUpload.ok) {
+          const uploadData = await resUpload.json();
+          finalUrl = uploadData.url;
+        }
       } catch (err) {
-        console.error("Error processing result:", err);
-        // Fallback for demo purposes if backend is down
-        setUploadedImageUrl(dataUrl);
+        console.warn("Cloudinary upload failed, falling back to local data URL:", err);
       } finally {
+        setUploadedImageUrl(finalUrl);
         setIsUploading(false);
+      }
+
+      // 2. Save Session to Browser Storage (localStorage & cookies)
+      try {
+        const newRecord: SessionRecord = {
+          id: Date.now(),
+          image_url: finalUrl,
+          created_at: new Date().toISOString()
+        };
+
+        const localHistoryStr = localStorage.getItem('pm_history') || '[]';
+        const localHistory = JSON.parse(localHistoryStr) as SessionRecord[];
+        localHistory.unshift(newRecord);
+        localStorage.setItem('pm_history', JSON.stringify(localHistory));
+
+        // Save backup to cookies (limited to last 10 URL records under 4KB)
+        if (!finalUrl.startsWith('data:')) {
+          const cookieHistory = localHistory.slice(0, 10);
+          document.cookie = `pm_history=${encodeURIComponent(JSON.stringify(cookieHistory))}; path=/; max-age=31536000; SameSite=Lax`;
+        }
+
+        fetchHistory();
+      } catch (err) {
+        console.error("Failed to save session history locally:", err);
       }
     };
 
@@ -81,15 +79,24 @@ const ResultPage: React.FC<Props> = ({ dataUrl, layout, frame, sessionMode, onRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchHistory = async (deviceId: string) => {
+  const fetchHistory = () => {
     try {
-      const res = await fetch(`${API_BASE}/api/sessions?device_id=${deviceId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
+      // 1. Read from localStorage
+      const localHistoryStr = localStorage.getItem('pm_history');
+      if (localHistoryStr) {
+        setHistory(JSON.parse(localHistoryStr));
+        return;
+      }
+
+      // 2. Fallback to cookies
+      const match = document.cookie.match(/(^| )pm_history=([^;]+)/);
+      if (match) {
+        const cookieHistory = JSON.parse(decodeURIComponent(match[2]));
+        setHistory(cookieHistory);
+        localStorage.setItem('pm_history', JSON.stringify(cookieHistory));
       }
     } catch (err) {
-      console.warn("Could not fetch history");
+      console.warn("Could not load history from browser storage:", err);
     }
   };
 
@@ -112,12 +119,18 @@ const ResultPage: React.FC<Props> = ({ dataUrl, layout, frame, sessionMode, onRe
     }
   };
 
-  const handleDeleteHistory = async (id: number) => {
+  const handleDeleteHistory = (id: number) => {
     try {
-      await fetch(`${API_BASE}/api/sessions/${id}`, { method: 'DELETE' });
-      setHistory(prev => prev.filter(h => h.id !== id));
+      const localHistoryStr = localStorage.getItem('pm_history') || '[]';
+      const localHistory = JSON.parse(localHistoryStr) as SessionRecord[];
+      const updatedHistory = localHistory.filter(h => h.id !== id);
+      localStorage.setItem('pm_history', JSON.stringify(updatedHistory));
+      setHistory(updatedHistory);
+
+      const cookieHistory = updatedHistory.slice(0, 10).filter(h => !h.image_url.startsWith('data:'));
+      document.cookie = `pm_history=${encodeURIComponent(JSON.stringify(cookieHistory))}; path=/; max-age=31536000; SameSite=Lax`;
     } catch (err) {
-      console.error("Delete failed");
+      console.error("Delete from browser storage failed:", err);
     }
   };
 

@@ -3,16 +3,11 @@ import io
 import cloudinary
 import cloudinary.uploader
 import qrcode
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app import models, schemas, config
-from app.database import engine, get_db
-
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+from app import schemas, config
 
 app = FastAPI(title="Photomatics API")
 
@@ -85,37 +80,8 @@ def generate_qrcode(req: schemas.QRCodeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/sessions", response_model=schemas.PhotoSessionResponse)
-def create_session(session_in: schemas.PhotoSessionCreate, db: Session = Depends(get_db)):
-    db_session = models.PhotoSession(
-        device_id=session_in.device_id,
-        layout_id=session_in.layout_id,
-        frame_id=session_in.frame_id,
-        session_mode=session_in.session_mode,
-        image_url=session_in.image_url,
-    )
-    db.add(db_session)
-    db.commit()
-    db.refresh(db_session)
-    return db_session
-
-@app.get("/api/sessions", response_model=list[schemas.PhotoSessionResponse])
-def get_sessions(device_id: str = None, db: Session = Depends(get_db)):
-    query = db.query(models.PhotoSession).filter(models.PhotoSession.deleted_at == None)
-    if device_id:
-        query = query.filter(models.PhotoSession.device_id == device_id)
-    return query.order_by(models.PhotoSession.created_at.desc()).all()
-
-@app.delete("/api/sessions/{session_id}")
-def delete_session(session_id: int, db: Session = Depends(get_db)):
-    db_session = db.query(models.PhotoSession).filter(models.PhotoSession.id == session_id).first()
-    if not db_session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    # Soft delete
-    db_session.deleted_at = datetime.utcnow()
-    db.commit()
-    return {"message": "Session deleted successfully"}
+# Session history is now stored directly in the browser's cookies/localStorage.
+# Backend is stateless and no longer requires local database table storage.
 
 @app.post("/api/ai/remove-background")
 def ai_remove_background(req: schemas.UploadImageRequest):
