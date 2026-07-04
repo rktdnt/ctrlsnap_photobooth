@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, ChevronRight, Layout as LayoutIcon, Frame, Sparkles, Check, Camera } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Layout as LayoutIcon, Frame, Sparkles, Check, Camera, X, Loader2 } from 'lucide-react';
 import { PhotostripLayout, PhotoFrame, LAYOUTS, FRAMES } from '../types';
+import { makeQRISDynamic, DEFAULT_STATIC_QRIS } from '../utils/qris';
 
 interface Props {
   sessionMode: 'trial' | 'premium';
@@ -22,6 +23,21 @@ const TemplateSelector: React.FC<Props> = ({
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
+
+  // QRIS subscription state
+  const [showPaymentModal, setShowPaymentModal] = React.useState(false);
+  const [isPaying, setIsPaying] = React.useState(false);
+  const [isPaid, setIsPaid] = React.useState(false);
+  const [qrisUrl, setQrisUrl] = React.useState('');
+
+  React.useEffect(() => {
+    if (sessionMode === 'premium') {
+      const staticQris = import.meta.env.VITE_STATIC_QRIS || DEFAULT_STATIC_QRIS;
+      const dynamicQris = makeQRISDynamic(staticQris, 10000);
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dynamicQris)}`;
+      setQrisUrl(qrImageUrl);
+    }
+  }, [sessionMode]);
 
   React.useEffect(() => {
     const startCamera = async () => {
@@ -45,7 +61,24 @@ const TemplateSelector: React.FC<Props> = ({
     };
   }, []);
   
+  const handleVerifyPayment = () => {
+    setIsPaying(true);
+    // Simulate payment scrapper/callback check
+    setTimeout(() => {
+      setIsPaying(false);
+      setIsPaid(true);
+      setTimeout(() => {
+        setShowPaymentModal(false);
+        onNext();
+      }, 1500);
+    }, 2500);
+  };
+
   const handleNext = () => {
+    if (sessionMode === 'premium' && !isPaid) {
+      setShowPaymentModal(true);
+      return;
+    }
     // If trial, force to single layout
     if (sessionMode === 'trial') {
       setSelectedLayout(LAYOUTS.find(l => l.id === 'single-1') || LAYOUTS[0]);
@@ -214,6 +247,77 @@ const TemplateSelector: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      {/* QRIS Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md rounded-[2.5rem] bg-warm-cream p-8 text-ink shadow-2xl border border-ink/10 animate-scale-in">
+            {!isPaid && (
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/70 shadow transition hover:-translate-y-0.5 cursor-pointer animate-fade-in"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+
+            <div className="text-center flex flex-col items-center">
+              {/* QRIS Header branding */}
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-6 h-6 text-soft-ink animate-pulse" />
+                <span className="font-display font-black text-xl tracking-widest text-ink">QRIS DINAMIS</span>
+              </div>
+              <p className="text-xs text-soft-ink mb-6 uppercase tracking-wider font-mono">Photomatics Premium Upgrade</p>
+
+              {!isPaid ? (
+                <>
+                  <div className="cream-card w-full rounded-2xl p-4 mb-6 border border-ink/5 bg-white/40">
+                    <div className="text-sm text-soft-ink mb-1">Total yang harus dibayar</div>
+                    <div className="font-mono text-3xl font-black text-ink">Rp 10.000</div>
+                  </div>
+
+                  {/* QR Code Container */}
+                  <div className="relative mb-6 flex aspect-square w-full max-w-[240px] items-center justify-center rounded-3xl bg-white p-4 shadow-inner border border-ink/5">
+                    {qrisUrl ? (
+                      <img src={qrisUrl} alt="QRIS Code" className="w-full h-full object-contain" />
+                    ) : (
+                      <Loader2 className="w-8 h-8 animate-spin text-soft-ink" />
+                    )}
+                  </div>
+
+                  <p className="text-xs text-soft-ink text-center mb-6 leading-relaxed">
+                    Pindai kode QR di atas menggunakan aplikasi e-wallet Anda (GOPAY, OVO, DANA, LinkAja) atau Mobile Banking untuk melakukan pembayaran.
+                  </p>
+
+                  <button
+                    onClick={handleVerifyPayment}
+                    disabled={isPaying}
+                    className="soft-btn-primary flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-black disabled:opacity-75 cursor-pointer"
+                  >
+                    {isPaying ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" /> Memverifikasi...
+                      </>
+                    ) : (
+                      'Saya Sudah Bayar'
+                    )}
+                  </button>
+                </>
+              ) : (
+                <div className="py-10 flex flex-col items-center gap-4">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-ink text-warm-cream shadow-lg">
+                    <Check className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-2xl font-black mt-2">Pembayaran Berhasil!</h3>
+                  <p className="text-soft-ink text-center max-w-xs">
+                    Sesi Premium Anda telah aktif. Selamat berfoto dengan fitur lengkap!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
