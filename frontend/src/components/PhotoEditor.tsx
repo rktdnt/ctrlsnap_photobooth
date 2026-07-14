@@ -6,7 +6,7 @@ interface Props {
   photos: CapturedPhoto[];
   layout: PhotostripLayout;
   initialFrame: PhotoFrame;
-  sessionMode: 'trial' | 'premium';
+  sessionMode: 'free' | 'premium';
   onBack: () => void;
   onSave: (compiledDataUrl: string) => void;
 }

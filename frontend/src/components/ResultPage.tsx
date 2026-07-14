@@ -6,7 +6,7 @@ interface Props {
   dataUrl: string;
   layout: PhotostripLayout;
   frame: PhotoFrame;
-  sessionMode: 'trial' | 'premium';
+  sessionMode: 'free' | 'premium';
   onReset: () => void;
 }
 

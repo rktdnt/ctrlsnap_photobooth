@@ -60,7 +60,6 @@ function App() {
       
       {view === 'selector' && (
         <TemplateSelector 
-          sessionMode={sessionMode}
           selectedLayout={selectedLayout}
           setSelectedLayout={setSelectedLayout}
           selectedFrame={selectedFrame}
