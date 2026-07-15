@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CapturedPhoto, PhotostripLayout, PhotoFrame, PhotoFilter, Sticker, TextItem, PlacedSticker, FILTERS, STICKERS, FRAMES } from '../types';
-import { ChevronLeft, Download, Type, Image as ImageIcon, Smile, Palette, Trash2, Crown } from 'lucide-react';
+import { ChevronLeft, Download, Type, Image as ImageIcon, Smile, Palette, Trash2, Crown, X, Sparkles, Loader2, Check } from 'lucide-react';
+import { makeQRISDynamic, DEFAULT_STATIC_QRIS } from '../utils/qris';
 
 interface Props {
   photos: CapturedPhoto[];
   layout: PhotostripLayout;
   initialFrame: PhotoFrame;
   sessionMode: 'free' | 'premium';
+  onUpgradePremium: () => void;
   onBack: () => void;
   onSave: (compiledDataUrl: string) => void;
 }
 
-const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMode, onBack, onSave }) => {
+const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMode, onUpgradePremium, onBack, onSave }) => {
   const [activeTab, setActiveTab] = useState<'filter' | 'sticker' | 'text' | 'frame' | 'custom'>('filter');
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [customFrameBgImage, setCustomFrameBgImage] = useState<string | null>(null);
@@ -47,6 +49,35 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
   // Drag state
   const [draggingItem, setDraggingItem] = useState<{ id: string, type: 'sticker' | 'text' } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Premium QRIS modal state
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumShowPayment, setPremiumShowPayment] = useState(false);
+  const [isPremiumPaying, setIsPremiumPaying] = useState(false);
+  const [isPremiumPaid, setIsPremiumPaid] = useState(false);
+  const [premiumQrisUrl, setPremiumQrisUrl] = useState('');
+
+  const handleOpenPremium = () => {
+    setShowPremiumModal(true);
+    setPremiumShowPayment(false);
+    setIsPremiumPaid(false);
+    const staticQris = import.meta.env.VITE_STATIC_QRIS || DEFAULT_STATIC_QRIS;
+    const dynamicQris = makeQRISDynamic(staticQris, 10000);
+    setPremiumQrisUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(dynamicQris)}`);
+  };
+
+  const handleVerifyPremium = () => {
+    setIsPremiumPaying(true);
+    setTimeout(() => {
+      setIsPremiumPaying(false);
+      setIsPremiumPaid(true);
+      setTimeout(() => {
+        setShowPremiumModal(false);
+        setPremiumShowPayment(false);
+        onUpgradePremium();
+      }, 1500);
+    }, 2500);
+  };
 
   const handlePointerDown = (e: React.PointerEvent, id: string, type: 'sticker' | 'text') => {
     e.preventDefault();
@@ -332,6 +363,7 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
   };
 
   return (
+    <>
     <div className="container mx-auto flex min-h-screen flex-col px-6 py-8 text-ink">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
@@ -709,10 +741,14 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
                     </div>
                   </div>
                 ) : (
-                  <div className="cream-card rounded-[1.5rem] p-5 border border-dashed border-ink/20 flex flex-col items-center text-center">
-                    <Crown className="mb-2 h-6 w-6 text-soft-ink" />
+                  <div
+                    onClick={handleOpenPremium}
+                    className="cream-card rounded-[1.5rem] p-5 border border-dashed border-ink/20 flex flex-col items-center text-center cursor-pointer hover:bg-muted-blue/20 transition-colors group"
+                  >
+                    <Crown className="mb-2 h-6 w-6 text-soft-ink group-hover:text-ink transition-colors" />
                     <p className="text-xs font-black text-ink">Upgrade Kustomisasi Frame</p>
-                    <p className="mt-1 text-[10px] text-soft-ink max-w-xs">Pilih premium sesi untuk mengganti warna background apa saja dan menggunakan template gambar Anda sendiri.</p>
+                    <p className="mt-1 text-[10px] text-soft-ink max-w-xs">Klik untuk upgrade ke Premium — ganti warna background & gunakan template gambar sendiri.</p>
+                    <span className="mt-3 rounded-full bg-ink px-4 py-1.5 text-[10px] font-black text-warm-cream">Rp 10.000 / sesi →</span>
                   </div>
                 )}
               </div>
@@ -723,10 +759,14 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
               <div>
                 <h4 className="mb-4 text-sm font-black uppercase text-soft-ink">Mascot / Custom Logo</h4>
                 {sessionMode !== 'premium' ? (
-                  <div className="flex flex-col items-center justify-center rounded-2xl border border-ink/10 bg-white/40 p-8 text-center">
-                    <Crown className="mb-3 h-12 w-12 text-soft-ink" />
+                  <div
+                    onClick={handleOpenPremium}
+                    className="flex flex-col items-center justify-center rounded-2xl border border-ink/10 bg-white/40 p-8 text-center cursor-pointer hover:bg-muted-blue/20 transition-colors group"
+                  >
+                    <Crown className="mb-3 h-12 w-12 text-soft-ink group-hover:text-ink transition-colors" />
                     <p className="text-sm font-black text-ink">Fitur Premium</p>
-                    <p className="mt-2 max-w-xs text-xs text-soft-ink">Upgrade ke Premium Sesi untuk menambahkan logo custom, karakter anime, atau gambar Anda sendiri di pojok photostrip.</p>
+                    <p className="mt-2 max-w-xs text-xs text-soft-ink">Klik untuk upgrade ke Premium — tambahkan logo, karakter, atau gambar kustom di pojok photostrip.</p>
+                    <span className="mt-4 rounded-full bg-ink px-5 py-2 text-xs font-black text-warm-cream">Rp 10.000 / sesi →</span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink/20 bg-white/40 p-6">
@@ -761,7 +801,111 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
         </div>
       </div>
     </div>
+
+      {/* ─── QRIS Premium Modal ─── */}
+      {showPremiumModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !isPremiumPaying && !isPremiumPaid) setShowPremiumModal(false); }}
+        >
+          <div className="relative w-full max-w-sm rounded-[2.5rem] bg-ink p-8 text-warm-cream shadow-2xl overflow-hidden">
+            {!isPremiumPaid && !isPremiumPaying && (
+              <button
+                onClick={() => { setShowPremiumModal(false); setPremiumShowPayment(false); }}
+                className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-warm-cream/10 transition hover:bg-warm-cream/20"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Step 1: Upsell */}
+            {!premiumShowPayment && !isPremiumPaid && (
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-warm-cream/10">
+                  <Crown className="w-7 h-7" />
+                </div>
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted-blue mb-1">Upgrade Premium</p>
+                <h2 className="font-display text-2xl font-black leading-tight mb-2">Buka Semua Fitur</h2>
+                <p className="text-sm text-warm-cream/70 mb-5 leading-relaxed">
+                  Frame kustom, upload mascot/logo, bebas watermark — sekali bayar untuk sesi ini.
+                </p>
+                <div className="w-full mb-5 rounded-2xl bg-warm-cream/5 p-4 flex flex-col gap-2.5">
+                  {['Kustomisasi warna & gambar frame', 'Upload mascot / logo kustom', 'Hasil foto bebas watermark'].map(f => (
+                    <div key={f} className="flex items-center gap-2.5 text-sm text-warm-cream/80">
+                      <Check className="w-4 h-4 text-muted-blue flex-shrink-0" />{f}
+                    </div>
+                  ))}
+                </div>
+                <div className="w-full flex flex-col gap-3">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-sm text-warm-cream/60">Harga per sesi</span>
+                    <span className="font-mono text-2xl font-black">Rp 10.000</span>
+                  </div>
+                  <button
+                    onClick={() => setPremiumShowPayment(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-warm-cream py-3.5 font-black text-ink hover:bg-warm-cream/90 transition"
+                  >
+                    <Crown className="w-4 h-4" /> Bayar & Upgrade Sekarang
+                  </button>
+                  <button onClick={() => setShowPremiumModal(false)} className="text-sm text-warm-cream/40 hover:text-warm-cream/70 transition py-1">
+                    Nanti aja
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: QRIS Payment */}
+            {premiumShowPayment && !isPremiumPaid && (
+              <div className="flex flex-col items-center text-center">
+                {!isPremiumPaying && (
+                  <button
+                    onClick={() => setPremiumShowPayment(false)}
+                    className="absolute left-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-warm-cream/10 transition hover:bg-warm-cream/20"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="flex items-center gap-2 mb-1 mt-1">
+                  <Sparkles className="w-4 h-4 text-muted-blue animate-pulse" />
+                  <span className="font-display font-black text-lg tracking-widest">QRIS DINAMIS</span>
+                </div>
+                <p className="text-[10px] text-warm-cream/50 uppercase tracking-wider font-mono mb-4">CTRL+Snap Premium</p>
+                <div className="w-full rounded-2xl border border-warm-cream/10 p-3 mb-4 flex justify-between items-center">
+                  <span className="text-sm text-warm-cream/60">Total bayar</span>
+                  <span className="font-mono text-xl font-black">Rp 10.000</span>
+                </div>
+                <div className="relative mb-4 flex aspect-square w-full max-w-[200px] items-center justify-center rounded-3xl bg-white p-3 shadow-inner">
+                  {premiumQrisUrl
+                    ? <img src={premiumQrisUrl} alt="QRIS" className="w-full h-full object-contain rounded-2xl" />
+                    : <Loader2 className="w-8 h-8 animate-spin text-soft-ink" />}
+                </div>
+                <p className="text-xs text-warm-cream/50 mb-4">Scan dengan GOPAY, OVO, DANA, LinkAja, atau M-Banking.</p>
+                <button
+                  onClick={handleVerifyPremium}
+                  disabled={isPremiumPaying}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-warm-cream py-3.5 font-black text-ink hover:bg-warm-cream/90 transition disabled:opacity-60"
+                >
+                  {isPremiumPaying ? <><Loader2 className="w-5 h-5 animate-spin" /> Lagi Dicek...</> : 'Udah Transfer, Gas! 🔥'}
+                </button>
+              </div>
+            )}
+
+            {/* Step 3: Success */}
+            {isPremiumPaid && (
+              <div className="flex flex-col items-center text-center py-8 gap-4">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-warm-cream text-ink shadow-lg">
+                  <Check className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black">Premium Aktif! 🎉</h3>
+                <p className="text-warm-cream/70 text-sm max-w-xs">Semua fitur premium sekarang terbuka. Silakan lanjutkan mendekorasi fotomu!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
 export default PhotoEditor;
+

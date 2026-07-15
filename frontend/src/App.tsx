@@ -66,6 +66,10 @@ function App() {
           setSelectedFrame={setSelectedFrame}
           onBack={() => navigateTo('landing')}
           onNext={() => navigateTo('photobooth')}
+          onUpgradePremium={() => {
+            setSessionMode('premium');
+            navigateTo('photobooth');
+          }}
         />
       )}
 
@@ -86,6 +90,7 @@ function App() {
           layout={selectedLayout}
           initialFrame={selectedFrame}
           sessionMode={sessionMode}
+          onUpgradePremium={() => setSessionMode('premium')}
           onBack={() => navigateTo('photobooth')}
           onSave={(dataUrl) => {
             setCompiledDataUrl(dataUrl);

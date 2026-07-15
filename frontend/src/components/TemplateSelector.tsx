@@ -11,6 +11,7 @@ interface Props {
   setSelectedFrame: (frame: PhotoFrame) => void;
   onBack: () => void;
   onNext: () => void;
+  onUpgradePremium: () => void;
 }
 
 // Mini visual preview of a frame — shows 2-3 photo slots inside the frame color
@@ -70,7 +71,7 @@ const FramePreview: React.FC<{ frame: PhotoFrame; isSelected: boolean }> = ({ fr
 const TemplateSelector: React.FC<Props> = ({
   selectedLayout, setSelectedLayout,
   selectedFrame, setSelectedFrame,
-  onBack, onNext
+  onBack, onNext, onUpgradePremium
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -122,7 +123,7 @@ const TemplateSelector: React.FC<Props> = ({
       setTimeout(() => {
         setShowUpgradeModal(false);
         setShowPayment(false);
-        onNext();
+        onUpgradePremium(); // upgrade sessionMode di App.tsx ke 'premium'
       }, 1600);
     }, 2500);
   };
