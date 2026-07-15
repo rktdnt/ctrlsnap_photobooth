@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CapturedPhoto, PhotostripLayout, PhotoFrame, PhotoFilter, Sticker, TextItem, PlacedSticker, FILTERS, STICKERS, FRAMES } from '../types';
 import { ChevronLeft, Download, Type, Image as ImageIcon, Smile, Palette, Trash2, Crown, X, Sparkles, Loader2, Check } from 'lucide-react';
 import { makeQRISDynamic, DEFAULT_STATIC_QRIS } from '../utils/qris';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Props {
   photos: CapturedPhoto[];
@@ -69,7 +70,7 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
   const handleVerifyPremium = async () => {
     setIsPremiumPaying(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/payments/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -809,7 +810,7 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
                           <button
                             onClick={async () => {
                               try {
-                                const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+                                const apiBase = getApiBaseUrl();
                                 const res = await fetch(`${apiBase}/api/ai/remove-background`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },

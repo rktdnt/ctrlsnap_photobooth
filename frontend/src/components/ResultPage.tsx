@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Home, Share2, Download, History, Trash2, Camera, ExternalLink, Link, Sparkles, Loader2, AlertCircle, Clapperboard } from 'lucide-react';
 import { PhotostripLayout, PhotoFrame, CapturedPhoto } from '../types';
+import { getApiBaseUrl } from '../utils/api';
 
 interface Props {
   dataUrl: string;
@@ -50,7 +51,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
       setIsUploading(true);
       
       try {
-        const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+        const apiBase = getApiBaseUrl();
         const formData = new FormData();
         formData.append('image_base64', dataUrl);
 
@@ -75,7 +76,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
 
       // Save Session to Database via Backend API
       try {
-        const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+        const apiBase = getApiBaseUrl();
         const sessionCreate = {
           device_id: getDeviceId(),
           layout_id: layout.id,
@@ -105,7 +106,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
 
   const fetchHistory = async () => {
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+      const apiBase = getApiBaseUrl();
       const devId = getDeviceId();
       const res = await fetch(`${apiBase}/api/sessions?device_id=${encodeURIComponent(devId)}`);
       if (res.ok) {
@@ -121,7 +122,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
     setShowQRModal(true);
     if (!qrCodeDataUrl && uploadedImageUrl) {
       try {
-        const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+        const apiBase = getApiBaseUrl();
         const res = await fetch(`${apiBase}/api/qrcode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -143,7 +144,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
 
   const handleDeleteHistory = async (id: number) => {
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/sessions/${id}`, {
         method: 'DELETE'
       });
@@ -189,7 +190,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
     setGifError('');
     try {
       // Direct call to Railway backend to process GIF (no local fallback)
-      const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/media/gif`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

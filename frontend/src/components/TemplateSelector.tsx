@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight, Layout as LayoutIcon, Frame, Check, Camera, 
 import { PhotostripLayout, PhotoFrame, LAYOUTS, FRAMES } from '../types';
 import { makeQRISDynamic, DEFAULT_STATIC_QRIS } from '../utils/qris';
 
+import { getApiBaseUrl } from '../utils/api';
+
 interface Props {
   selectedLayout: PhotostripLayout;
   setSelectedLayout: (layout: PhotostripLayout) => void;
@@ -118,7 +120,7 @@ const TemplateSelector: React.FC<Props> = ({
   const handleVerifyPayment = async () => {
     setIsPaying(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'https://photomatics-photobooth-production.up.railway.app';
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/payments/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
