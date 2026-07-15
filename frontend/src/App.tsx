@@ -102,6 +102,7 @@ function App() {
       {view === 'result' && (
         <ResultPage 
           dataUrl={compiledDataUrl}
+          photos={capturedPhotos}
           layout={selectedLayout}
           frame={selectedFrame}
           sessionMode={sessionMode}

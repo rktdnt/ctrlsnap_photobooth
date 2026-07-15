@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Home, Share2, Download, History, Trash2, Camera, ExternalLink, Link } from 'lucide-react';
-import { PhotostripLayout, PhotoFrame } from '../types';
+import { Home, Share2, Download, History, Trash2, Camera, ExternalLink, Link, Sparkles, Loader2, AlertCircle, Clapperboard } from 'lucide-react';
+import { PhotostripLayout, PhotoFrame, CapturedPhoto } from '../types';
 
 interface Props {
   dataUrl: string;
+  photos: CapturedPhoto[];
   layout: PhotostripLayout;
   frame: PhotoFrame;
   sessionMode: 'free' | 'premium';
@@ -16,7 +17,7 @@ interface SessionRecord {
   created_at: string;
 }
 
-const ResultPage: React.FC<Props> = ({ dataUrl, onReset }) => {
+const ResultPage: React.FC<Props> = ({ dataUrl, photos, onReset }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(true);
@@ -24,6 +25,11 @@ const ResultPage: React.FC<Props> = ({ dataUrl, onReset }) => {
   const [history, setHistory] = useState<SessionRecord[]>([]);
   const [waNumber, setWaNumber] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Live Photo GIF state
+  const [gifState, setGifState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [gifDataUrl, setGifDataUrl] = useState<string>('');
+  const [gifError, setGifError] = useState<string>('');
 
 
 
@@ -160,6 +166,41 @@ const ResultPage: React.FC<Props> = ({ dataUrl, onReset }) => {
     }
   };
 
+  const handleGenerateGif = async () => {
+    if (photos.length < 2) {
+      setGifError('Minimal 2 foto diperlukan untuk membuat Live Photo GIF.');
+      setGifState('error');
+      return;
+    }
+    setGifState('loading');
+    setGifError('');
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || 'https://ctrlsnap.rypl.my.id';
+      const res = await fetch(`${apiBase}/api/media/gif`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frames: photos.map(p => p.dataUrl),
+          fps: 6,
+          width: 480,
+          ping_pong: true,
+          quality: 82,
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(detail.detail || res.statusText);
+      }
+      const data = await res.json();
+      setGifDataUrl(data.gif_base64);
+      setGifState('done');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setGifError(msg);
+      setGifState('error');
+    }
+  };
+
   return (
     <div className="container mx-auto min-h-screen px-6 py-10 text-ink">
       <div className="text-center mb-10">
@@ -253,6 +294,110 @@ const ResultPage: React.FC<Props> = ({ dataUrl, onReset }) => {
           </button>
         </div>
       </div>
+
+      {/* Live Photo GIF Section */}
+      {photos.length >= 2 && (
+        <div className="mt-16 max-w-5xl mx-auto">
+          <div className="cream-card rounded-[2.5rem] p-8 md:p-10">
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+
+              {/* Kiri: info & tombol */}
+              <div className="flex-1 flex flex-col gap-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted-blue/40">
+                    <Clapperboard className="w-6 h-6 text-ink" />
+                  </div>
+                  <div>
+                    <p className="eyebrow">Fitur Baru ✨</p>
+                    <h3 className="font-display text-2xl font-black leading-tight">Live Photo GIF</h3>
+                  </div>
+                </div>
+                <p className="text-soft-ink leading-relaxed text-sm">
+                  Ubah {photos.length} foto yang kamu ambil menjadi GIF animasi looping dengan efek <strong>ping-pong</strong> — maju lalu mundur — persis seperti Apple Live Photo.
+                </p>
+
+                <div className="flex flex-wrap gap-2 text-xs font-semibold text-soft-ink">
+                  {[`${photos.length} frame`, '6 FPS', 'Ping-pong loop', '480px lebar'].map(t => (
+                    <span key={t} className="rounded-full bg-muted-blue/30 px-3 py-1">{t}</span>
+                  ))}
+                </div>
+
+                {gifState === 'idle' && (
+                  <button
+                    onClick={handleGenerateGif}
+                    className="soft-btn-primary flex items-center justify-center gap-2 rounded-full py-3.5 font-black"
+                  >
+                    <Sparkles className="w-5 h-5" /> Buat Live Photo GIF 🎬
+                  </button>
+                )}
+
+                {gifState === 'loading' && (
+                  <div className="flex items-center gap-3 rounded-full bg-muted-blue/30 px-6 py-3.5">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="font-black text-sm">Lagi diproses sama server...</span>
+                  </div>
+                )}
+
+                {gifState === 'error' && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{gifError || 'Gagal generate GIF. Pastikan backend berjalan.'}</span>
+                    </div>
+                    <button
+                      onClick={handleGenerateGif}
+                      className="flex items-center justify-center gap-2 rounded-full border-2 border-ink py-3 font-black text-sm hover:bg-ink hover:text-warm-cream transition-colors"
+                    >
+                      Coba Lagi
+                    </button>
+                  </div>
+                )}
+
+                {gifState === 'done' && (
+                  <a
+                    href={gifDataUrl}
+                    download="ctrlsnap-livephoto.gif"
+                    className="flex items-center justify-center gap-2 rounded-full bg-ink py-3.5 font-black text-warm-cream hover:bg-ink/80 transition-colors"
+                  >
+                    <Download className="w-5 h-5" /> Download GIF 📥
+                  </a>
+                )}
+              </div>
+
+              {/* Kanan: preview GIF */}
+              <div className="flex-shrink-0 w-full md:w-52">
+                {gifState === 'done' && gifDataUrl ? (
+                  <div className="relative rounded-3xl overflow-hidden shadow-xl border border-ink/10">
+                    <img
+                      src={gifDataUrl}
+                      alt="Live Photo GIF Preview"
+                      className="w-full h-auto object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-ink/70 px-2.5 py-1 text-[10px] font-bold text-warm-cream backdrop-blur-sm">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" /> LIVE
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex aspect-[3/4] w-full items-center justify-center rounded-3xl border-2 border-dashed border-ink/15 bg-white/40">
+                    {gifState === 'loading' ? (
+                      <div className="flex flex-col items-center gap-3 text-soft-ink">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span className="text-xs font-bold">Processing...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-soft-ink/50 px-4 text-center">
+                        <Clapperboard className="w-10 h-10" />
+                        <span className="text-xs font-bold">Preview GIF muncul di sini</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History Section */}
       {history.length > 0 && (
