@@ -183,27 +183,19 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
       // 1. Calculate dimensions
       const CANVAS_WIDTH = 600;
       let CANVAS_HEIGHT = 600;
-      const PADDING = 32;
-      let slotWidth = CANVAS_WIDTH - (PADDING * 2);
-      let slotHeight = 400;
 
       switch(layout.id) {
         case 'single-1':
           CANVAS_HEIGHT = 680;
-          slotHeight = 500;
           break;
         case 'classic-3':
           CANVAS_HEIGHT = 1600;
-          slotHeight = 440;
           break;
         case 'strip-4':
           CANVAS_HEIGHT = 2100;
-          slotHeight = 430;
           break;
         case 'grid-4':
           CANVAS_HEIGHT = 720;
-          slotWidth = (CANVAS_WIDTH - (PADDING * 3)) / 2;
-          slotHeight = 260;
           break;
       }
 
@@ -215,11 +207,10 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
         const bgImgEl = await loadImage(customFrameBgImage);
         ctx.drawImage(bgImgEl, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       } else {
-        ctx.fillStyle = selectedFrame.bgColor;
+        ctx.fillStyle = selectedFrame.id === 'powerbuff-snap' ? '#FFF3D0' : selectedFrame.bgColor;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         if (selectedFrame.pattern === 'radial-dot') {
-          // Simple dot pattern simulation
           ctx.fillStyle = selectedFrame.textColor;
           ctx.globalAlpha = 0.1;
           for (let x = 0; x < CANVAS_WIDTH; x += 10) {
@@ -232,124 +223,165 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
           ctx.globalAlpha = 1.0;
         }
 
-        // Draw Header Title if specified (e.g. POWERBUFF SNAP)
-        if (selectedFrame.headerTitle) {
+        // Powerbuff Snap Header (Pink bar + dots + title + sparkles)
+        if (selectedFrame.id === 'powerbuff-snap') {
+          const headerH = 170;
+          ctx.fillStyle = '#FFD8E6';
+          ctx.fillRect(0, 0, CANVAS_WIDTH, headerH);
+
+          // Left & Right Circles
+          ctx.fillStyle = '#FF3B7B';
+          ctx.beginPath();
+          ctx.arc(45, 55, 20, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#00D494';
+          ctx.beginPath();
+          ctx.arc(CANVAS_WIDTH - 45, 55, 20, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Main Header Title
+          ctx.fillStyle = '#1E202B';
+          ctx.font = '900 34px Outfit, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.letterSpacing = '3px';
+          ctx.fillText('POWERBUFF SNAP', CANVAS_WIDTH / 2, 82);
+
+          // Sparkles ✦ ✦ ✦
+          ctx.fillStyle = '#FF3B7B';
+          ctx.font = '900 20px Outfit, sans-serif';
+          ctx.fillText('✦   ✦   ✦', CANVAS_WIDTH / 2, 130);
+        } else if (selectedFrame.headerTitle) {
           ctx.save();
           ctx.fillStyle = selectedFrame.textColor;
           ctx.font = '900 24px Outfit, sans-serif';
           ctx.textAlign = 'center';
           ctx.letterSpacing = '3px';
           ctx.fillText(selectedFrame.headerTitle, CANVAS_WIDTH / 2, 44);
-
-          // Draw header dots & sparkles
-          ctx.fillStyle = '#FF85A1';
-          ctx.beginPath();
-          ctx.arc(CANVAS_WIDTH / 2 - 140, 36, 6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#6ECFB0';
-          ctx.beginPath();
-          ctx.arc(CANVAS_WIDTH / 2 + 140, 36, 6, 0, Math.PI * 2);
-          ctx.fill();
           ctx.restore();
         }
       }
 
       // 3. Draw Photos with aspect-fill and filter tint
+      const startY = selectedFrame.id === 'powerbuff-snap' ? 200 : (selectedFrame.headerTitle ? 70 : 40);
+      const slotW = layout.id === 'grid-4' ? 256 : 520;
+      const slotH = layout.id === 'single-1' ? 500 : layout.id === 'classic-3' ? 410 : layout.id === 'strip-4' ? 380 : 250;
+      const cardPadding = 18;
+      const photoW = slotW - (cardPadding * 2);
+      const photoH = slotH - (cardPadding * 2) - (selectedFrame.slotLabels ? 30 : 0);
+
       for (let i = 0; i < photos.length; i++) {
         const img = await loadImage(photos[i].dataUrl);
         
-        let x = PADDING;
-        let y = (selectedFrame.headerTitle ? PADDING + 30 : PADDING) + (i * (slotHeight + PADDING));
+        let cardX = (CANVAS_WIDTH - slotW) / 2;
+        let cardY = startY + (i * (slotH + 30));
 
         if (layout.id === 'grid-4') {
           const col = i % 2;
           const row = Math.floor(i / 2);
-          x = PADDING + (col * (slotWidth + PADDING));
-          y = (selectedFrame.headerTitle ? PADDING + 30 : PADDING) + (row * (slotHeight + PADDING));
+          cardX = 32 + (col * (slotW + 24));
+          cardY = startY + (row * (slotH + 30));
         }
 
-        // Draw slot background card if slotBgColors specified
+        // Left Dark Pill Accent for Powerbuff Snap
+        if (selectedFrame.id === 'powerbuff-snap' && !customFrameBgImage) {
+          ctx.save();
+          ctx.fillStyle = '#1E202B';
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(cardX - 22, cardY + 120, 16, 90, 8);
+          } else {
+            ctx.fillRect(cardX - 22, cardY + 120, 16, 90);
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Colored Slot Card Box
         if (selectedFrame.slotBgColors && !customFrameBgImage) {
           const slotBg = selectedFrame.slotBgColors[i % selectedFrame.slotBgColors.length];
           ctx.save();
           ctx.fillStyle = slotBg;
-          const pad = 12;
-          const cardH = slotHeight + (selectedFrame.slotLabels ? 32 : 0) + (pad * 2);
-          ctx.fillStyle = slotBg;
-          ctx.fillRect(x - pad, y - pad, slotWidth + (pad * 2), cardH);
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(cardX, cardY, slotW, slotH, 16);
+          } else {
+            ctx.fillRect(cardX, cardY, slotW, slotH);
+          }
+          ctx.fill();
           ctx.restore();
         }
 
+        // Photo Image Inside Box
+        const photoX = cardX + cardPadding;
+        const photoY = cardY + cardPadding;
+
         ctx.save();
-        // Clip area
         ctx.beginPath();
-        ctx.rect(x, y, slotWidth, slotHeight);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(photoX, photoY, photoW, photoH, 12);
+        } else {
+          ctx.rect(photoX, photoY, photoW, photoH);
+        }
         ctx.clip();
 
-        // Aspect Fill calculation
         const imgAspect = img.width / img.height;
-        const slotAspect = slotWidth / slotHeight;
+        const slotAspect = photoW / photoH;
         let dWidth, dHeight, dx, dy;
 
         if (imgAspect > slotAspect) {
-          dHeight = slotHeight;
-          dWidth = slotHeight * imgAspect;
-          dx = x - (dWidth - slotWidth) / 2;
-          dy = y;
+          dHeight = photoH;
+          dWidth = photoH * imgAspect;
+          dx = photoX - (dWidth - photoW) / 2;
+          dy = photoY;
         } else {
-          dWidth = slotWidth;
-          dHeight = slotWidth / imgAspect;
-          dx = x;
-          dy = y - (dHeight - slotHeight) / 2;
+          dWidth = photoW;
+          dHeight = photoW / imgAspect;
+          dx = photoX;
+          dy = photoY - (dHeight - photoH) / 2;
         }
 
-        // Apply mirror horizontally for natural feel
-        ctx.translate(x + slotWidth / 2, y + slotHeight / 2);
+        ctx.translate(photoX + photoW / 2, photoY + photoH / 2);
         ctx.scale(-1, 1);
-        ctx.translate(-(x + slotWidth / 2), -(y + slotHeight / 2));
+        ctx.translate(-(photoX + photoW / 2), -(photoY + photoH / 2));
 
         ctx.drawImage(img, dx, dy, dWidth, dHeight);
-        
-        // Remove mirror for overlay
         ctx.restore();
 
-        // Apply Tint Overlay based on filter
+        // Filter Tint Overlay
         ctx.save();
         ctx.beginPath();
-        ctx.rect(x, y, slotWidth, slotHeight);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(photoX, photoY, photoW, photoH, 12);
+        } else {
+          ctx.rect(photoX, photoY, photoW, photoH);
+        }
         
         if (selectedFilter.id === 'glamour') {
           ctx.fillStyle = 'rgba(255,255,255,0.05)';
         } else if (selectedFilter.id === 'kodak') {
-          ctx.fillStyle = 'rgba(251,191,36,0.08)'; // Amber tint
+          ctx.fillStyle = 'rgba(251,191,36,0.08)';
         } else if (selectedFilter.id === 'cyberpunk') {
-          ctx.fillStyle = 'rgba(236,72,153,0.08)'; // Pink tint
+          ctx.fillStyle = 'rgba(236,72,153,0.08)';
         } else if (selectedFilter.id === 'monochrome') {
-          // Desaturate is hard with pure canvas without pixel manipulation, we just add dark overlay
           ctx.fillStyle = 'rgba(0,0,0,0.1)'; 
         } else if (selectedFilter.id === 'popart') {
-          ctx.fillStyle = 'rgba(217,70,239,0.1)'; // Magenta tint
+          ctx.fillStyle = 'rgba(217,70,239,0.1)';
         } else {
           ctx.fillStyle = 'transparent';
         }
-        
         ctx.fill();
-        
-        // Stroke
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = `${selectedFrame.textColor}33`; // 20% opacity
-        ctx.stroke();
         ctx.restore();
 
-        // Slot Label
+        // Slot Label inside card
         if (selectedFrame.slotLabels && !customFrameBgImage) {
           const label = selectedFrame.slotLabels[i % selectedFrame.slotLabels.length];
           ctx.save();
-          ctx.fillStyle = selectedFrame.textColor;
-          ctx.font = '900 13px Outfit, sans-serif';
+          ctx.fillStyle = '#1E202B';
+          ctx.font = '900 16px Outfit, sans-serif';
           ctx.textAlign = 'center';
           ctx.letterSpacing = '2px';
-          ctx.fillText(label, x + slotWidth / 2, y + slotHeight + 18);
+          ctx.fillText(label, cardX + slotW / 2, cardY + photoH + cardPadding + 20);
           ctx.restore();
         }
       }
@@ -404,19 +436,35 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
         ctx.restore();
       }
 
-      // 7. Watermark Footer
+      // 7. Watermark Footer / Footer Banner
       ctx.save();
-      if (selectedFrame.footerBannerText && !customFrameBgImage) {
-        const bannerH = 40;
-        const bannerY = CANVAS_HEIGHT - bannerH - 24;
-        ctx.fillStyle = selectedFrame.footerBannerBg || '#C2F3E8';
-        ctx.fillRect(PADDING, bannerY, CANVAS_WIDTH - (PADDING * 2), bannerH);
+      if (selectedFrame.id === 'powerbuff-snap' && !customFrameBgImage) {
+        // PPG x NJ VIBE TEST note
+        ctx.fillStyle = '#1E202B';
+        ctx.font = '800 13px Outfit, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('PPG x NJ VIBE TEST', CANVAS_WIDTH - 40, CANVAS_HEIGHT - 120);
+
+        // Mint Banner at bottom
+        const bannerH = 90;
+        ctx.fillStyle = selectedFrame.footerBannerBg || '#C0FAF0';
+        ctx.fillRect(0, CANVAS_HEIGHT - bannerH, CANVAS_WIDTH, bannerH);
 
         ctx.fillStyle = '#1E202B';
-        ctx.font = '900 14px Outfit, sans-serif';
+        ctx.font = '900 20px Outfit, sans-serif';
         ctx.textAlign = 'center';
         ctx.letterSpacing = '3px';
-        ctx.fillText(selectedFrame.footerBannerText, CANVAS_WIDTH / 2, bannerY + 25);
+        ctx.fillText(selectedFrame.footerBannerText || 'NEW POP ENERGY • BESTIES MODE', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 38);
+      } else if (selectedFrame.footerBannerText && !customFrameBgImage) {
+        const bannerH = 60;
+        ctx.fillStyle = selectedFrame.footerBannerBg || '#C2F3E8';
+        ctx.fillRect(0, CANVAS_HEIGHT - bannerH, CANVAS_WIDTH, bannerH);
+
+        ctx.fillStyle = '#1E202B';
+        ctx.font = '900 16px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '3px';
+        ctx.fillText(selectedFrame.footerBannerText, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 24);
       } else {
         ctx.fillStyle = selectedFrame.textColor;
         ctx.font = 'bold 16px Outfit, sans-serif';
@@ -468,9 +516,9 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
         <div className="blue-card flex max-h-[74vh] items-center justify-center overflow-hidden rounded-[2.5rem] p-6 lg:col-span-6">
           <div 
             ref={containerRef}
-            className="relative max-h-full max-w-full touch-none overflow-hidden rounded-[2rem] shadow-2xl transition-colors duration-500 p-4 flex flex-col justify-between"
+            className="relative max-h-full max-w-full touch-none overflow-hidden rounded-[2rem] shadow-2xl transition-colors duration-500 flex flex-col justify-between"
             style={{ 
-              backgroundColor: selectedFrame.bgColor,
+              backgroundColor: selectedFrame.id === 'powerbuff-snap' ? '#FFF3D0' : selectedFrame.bgColor,
               backgroundImage: customFrameBgImage ? `url(${customFrameBgImage})` : 'none',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
@@ -483,9 +531,21 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '10px 10px', color: selectedFrame.textColor }} />
             )}
 
-            {/* Frame Header Title (e.g. POWERBUFF SNAP) */}
-            {selectedFrame.headerTitle && !customFrameBgImage && (
-              <div className="relative z-10 text-center pb-1 flex flex-col items-center select-none">
+            {/* POWERBUFF SNAP HEADER */}
+            {selectedFrame.id === 'powerbuff-snap' && !customFrameBgImage && (
+              <div className="relative z-10 bg-[#FFD8E6] px-4 pt-3 pb-2 text-center select-none flex flex-col items-center">
+                <span className="absolute left-3 top-2.5 w-3.5 h-3.5 rounded-full bg-[#FF3B7B]" />
+                <span className="absolute right-3 top-2.5 w-3.5 h-3.5 rounded-full bg-[#00D494]" />
+                <div className="text-[12px] font-black tracking-wider text-[#1E202B] uppercase">
+                  POWERBUFF SNAP
+                </div>
+                <div className="text-[8px] tracking-widest text-[#FF3B7B] font-bold mt-0.5">✦ ✦ ✦</div>
+              </div>
+            )}
+
+            {/* Standard Header Title */}
+            {selectedFrame.headerTitle && selectedFrame.id !== 'powerbuff-snap' && !customFrameBgImage && (
+              <div className="relative z-10 text-center py-2 flex flex-col items-center select-none">
                 <div className="flex items-center gap-1.5 justify-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF85A1]" />
                   <span className="text-[10px] font-black tracking-wider uppercase" style={{ color: selectedFrame.textColor }}>
@@ -497,31 +557,37 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
               </div>
             )}
 
-            <div className={`relative z-10 w-full flex-1 flex ${layout.id === 'grid-4' ? 'flex-wrap gap-2.5' : 'flex-col gap-2.5 justify-center'}`}>
+            <div className={`relative z-10 w-full flex-1 flex p-3 ${layout.id === 'grid-4' ? 'flex-wrap gap-2.5' : 'flex-col gap-2.5 justify-center'}`}>
               {photos.map((p, i) => {
                 const slotBg = selectedFrame.slotBgColors ? selectedFrame.slotBgColors[i % selectedFrame.slotBgColors.length] : undefined;
                 const slotLabel = selectedFrame.slotLabels ? selectedFrame.slotLabels[i % selectedFrame.slotLabels.length] : undefined;
 
                 return (
-                  <div 
-                    key={i} 
-                    className={`relative overflow-hidden rounded-xl border border-ink/10 flex-shrink-0 p-1 flex flex-col justify-between ${
-                      layout.id === 'single-1' ? 'w-full aspect-[536/500]' :
-                      layout.id === 'classic-3' ? 'w-full aspect-[536/440]' :
-                      layout.id === 'strip-4' ? 'w-full aspect-[536/430]' :
-                      'w-[calc(50%-5px)] aspect-[252/260]'
-                    }`}
-                    style={{ backgroundColor: slotBg || 'transparent' }}
-                  >
-                    <div className="relative w-full flex-1 overflow-hidden rounded-lg">
-                      <img src={p.dataUrl} className={`w-full h-full object-cover transform -scale-x-100 ${selectedFilter.className}`} alt={`p-${i}`} />
-                    </div>
-
-                    {slotLabel && (
-                      <div className="text-center text-[7px] font-black tracking-wider pt-0.5 uppercase truncate" style={{ color: selectedFrame.textColor }}>
-                        {slotLabel}
-                      </div>
+                  <div key={i} className="relative w-full flex items-center">
+                    {/* Left Dark Pill Accent for Powerbuff Snap */}
+                    {selectedFrame.id === 'powerbuff-snap' && (
+                      <div className="absolute -left-2 z-20 w-1.5 h-6 rounded-full bg-[#1E202B]" />
                     )}
+
+                    <div 
+                      className={`relative w-full overflow-hidden rounded-xl border border-ink/10 p-1 flex flex-col justify-between ${
+                        layout.id === 'single-1' ? 'aspect-[536/500]' :
+                        layout.id === 'classic-3' ? 'aspect-[536/440]' :
+                        layout.id === 'strip-4' ? 'aspect-[536/430]' :
+                        'w-[calc(50%-5px)] aspect-[252/260]'
+                      }`}
+                      style={{ backgroundColor: slotBg || 'transparent' }}
+                    >
+                      <div className="relative w-full flex-1 overflow-hidden rounded-lg bg-black/5">
+                        <img src={p.dataUrl} className={`w-full h-full object-cover transform -scale-x-100 ${selectedFilter.className}`} alt={`p-${i}`} />
+                      </div>
+
+                      {slotLabel && (
+                        <div className="text-center text-[7.5px] font-black tracking-wider pt-0.5 uppercase truncate text-[#1E202B]">
+                          {slotLabel}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -556,6 +622,13 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
               ))}
             </div>
 
+            {/* Body Footer Note for Powerbuff Snap */}
+            {selectedFrame.id === 'powerbuff-snap' && !customFrameBgImage && (
+              <div className="relative z-10 px-3 pb-1 text-right text-[6.5px] font-black text-[#1E202B] tracking-tight">
+                PPG x NJ VIBE TEST
+              </div>
+            )}
+
             {customImage && (
               <img 
                 src={customImage} 
@@ -566,13 +639,13 @@ const PhotoEditor: React.FC<Props> = ({ photos, layout, initialFrame, sessionMod
 
             {/* Footer Banner */}
             {selectedFrame.footerBannerText && !customFrameBgImage ? (
-              <div className="relative z-10 mt-1.5 rounded-lg py-1 px-2 text-center shadow-sm" style={{ backgroundColor: selectedFrame.footerBannerBg || '#C2F3E8' }}>
-                <div className="text-[6.5px] font-black tracking-wider uppercase text-ink truncate">
+              <div className="relative z-10 py-2 px-2 text-center shadow-sm" style={{ backgroundColor: selectedFrame.footerBannerBg || '#C0FAF0' }}>
+                <div className="text-[7.5px] font-black tracking-wider uppercase text-[#1E202B] truncate">
                   {selectedFrame.footerBannerText}
                 </div>
               </div>
             ) : (
-              <div className="relative z-10 pt-1 w-full text-center text-[7px] font-display font-bold tracking-[0.2em] pointer-events-none" style={{ color: selectedFrame.textColor }}>
+              <div className="relative z-10 pt-1 pb-2 w-full text-center text-[7px] font-display font-bold tracking-[0.2em] pointer-events-none" style={{ color: selectedFrame.textColor }}>
                 CTRL+Snap
               </div>
             )}
