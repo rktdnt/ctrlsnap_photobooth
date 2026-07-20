@@ -189,7 +189,7 @@ const ResultPage: React.FC<Props> = ({ dataUrl, photos, layout, frame, sessionMo
     setGifState('loading');
     setGifError('');
     try {
-      // Direct call to Railway backend to process GIF (no local fallback)
+      // Call backend API to process GIF
       const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/api/media/gif`, {
         method: 'POST',

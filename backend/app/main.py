@@ -19,7 +19,6 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173",
         "https://ctrlsnap.rypl.my.id",
-        "https://photomatics-photobooth-production.up.railway.app",
         "*",  # allow all — tighten in production if needed
     ],
     allow_credentials=True,

@@ -2,34 +2,30 @@
  * api.ts
  *
  * Helper utility to securely resolve and sanitize the backend API URL.
- * Automatically handles cases where the configured environment variable
- * is missing a protocol prefix (causing relative paths) or resolves to
- * an internal private network address (like .internal) that is inaccessible
- * from the client browser.
+ * Defaults to empty string (relative path `/api/...`) when hosted on Vercel
+ * (where frontend and serverless API endpoints run on the same domain).
  */
-
-const PUBLIC_BACKEND_FALLBACK = 'https://photomatics-photobooth-production.up.railway.app';
 
 export function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
 
-  // 1. If not configured, use fallback
+  // 1. If not configured, default to empty string for relative routing on Vercel
   if (!envUrl) {
-    return PUBLIC_BACKEND_FALLBACK;
+    return '';
   }
 
-  const trimmed = envUrl.trim();
+  const trimmed = envUrl.trim().replace(/\/+$/, '');
 
-  // 2. Reject internal private Railway domains since client browser runs externally
-  if (trimmed.includes('.internal')) {
-    return PUBLIC_BACKEND_FALLBACK;
+  // 2. Reject internal private or legacy Railway domains
+  if (trimmed.includes('.internal') || trimmed.includes('railway.app')) {
+    return '';
   }
 
   // 3. Ensure it starts with http:// or https:// to prevent relative browser routing
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-    // If it's a domain, prepend https://
     return `https://${trimmed}`;
   }
 
   return trimmed;
 }
+

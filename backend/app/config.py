@@ -7,7 +7,10 @@ root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '
 if os.path.exists(root_env):
     load_dotenv(root_env)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./photomatics.db")
+is_vercel = os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV") is not None
+default_db = "sqlite:////tmp/photomatics.db" if is_vercel else "sqlite:///./photomatics.db"
+
+DATABASE_URL = os.getenv("DATABASE_URL", default_db)
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
